@@ -19,6 +19,10 @@ Setup Conda
 Install Blender OR DON'T (read later more on this)
 this is specific to your OS: https://docs.blender.org/manual/en/latest/getting_started/installing/linux.html
 but on Linux `sudo apt-get install blender` should do it.
+IMPORTANT: I used blender v2.90! If you don't want to run into issues I suggest to install this version!
+
+If you want to run the blender command in WSL you might run into memory issues. By default WSL does not assign enough memory to WSL for it to run tasks like that.
+So either create a `.wslconfig` in windows and allocate more memory or use the script provided in the blender scene or execute on your host machine.
 
 ## RUN
 

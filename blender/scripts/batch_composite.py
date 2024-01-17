@@ -13,9 +13,9 @@ IMAGE_INPUT_DIRECTORY = (
 IMAGE_OUTPUT_DIRECTORY = (
     "D:\\dev\\python\\make-photographs-historical\\data\\4_output_images\\"
 )
-FILTER_NAME = "Camera: Agfar Isolette, with damage"
+FILTER_NAME = "Camera: Agfar Isolette"
 # apply dynamic filter effects (like damage) to every nth image!
-FILTER_RANDOMIZER_FACTOR = 4
+DAMAGE_RANDOMIZER = None  # None = off
 CLEANUP = True
 NODE_OFFSET = 200
 
@@ -34,6 +34,7 @@ def evaluate_args():
     global FILTER_NAME
     global IMAGE_INPUT_DIRECTORY
     global IMAGE_OUTPUT_DIRECTORY
+    global DAMAGE_RANDOMIZER
 
     # list of arguments passed after '--'
     # call like that 'python test.py -- <FILTER_NAME> <INPUT_PATH> <OUTPUT_PATH>
@@ -52,6 +53,9 @@ def evaluate_args():
     if len(argv) >= 3:
         IMAGE_OUTPUT_DIRECTORY = argv[2]
 
+    if len(argv) >= 4:
+        DAMAGE_RANDOMIZER = int(argv[3])
+
     return
 
 
@@ -66,7 +70,7 @@ def apply_filters():
     file_output_node = tree.nodes.new("CompositorNodeOutputFile")
     file_output_node.base_path = IMAGE_OUTPUT_DIRECTORY
     file_output_node.format.file_format = "PNG"
-    file_output_node.location = 600, 200 * (len(image_files) / 2)
+    file_output_node.location = 1000, 200 * (len(image_files) / 2)
     # Create unique file slots for each image
     file_slots = [
         file_output_node.file_slots.new("Image") for _ in image_files
@@ -74,47 +78,57 @@ def apply_filters():
     scoped_image_nodes.append(file_output_node)
 
     active_filter_group = bpy.data.node_groups.get(FILTER_NAME)
+    damage_filter_group = bpy.data.node_groups.get("CameraFilmDamageFilter")
 
     # Loop through each image file
     for i, (image_file, file_slot) in enumerate(zip(image_files, file_slots)):
         # Construct the full path to the image file
         image_path = os.path.join(IMAGE_INPUT_DIRECTORY, image_file)
 
-        try:
-            # Load the image
-            img = bpy.data.images.load(image_path)
+        # Load the image
+        img = bpy.data.images.load(image_path)
 
-            # Create an image node and set the image for it
-            image_node = tree.nodes.new("CompositorNodeImage")
-            image_node.image = img
-            image_node.hide = True
-            image_node.location = 0, i * NODE_OFFSET
+        # Create an image node and set the image for it
+        image_node = tree.nodes.new("CompositorNodeImage")
+        image_node.image = img
+        image_node.hide = True
+        image_node.location = 0, i * NODE_OFFSET
 
-            active_filter_node = tree.nodes.new("CompositorNodeGroup")
-            active_filter_node.node_tree = active_filter_group
-            active_filter_node.location = 200, i * NODE_OFFSET
+        active_filter_node = tree.nodes.new("CompositorNodeGroup")
+        active_filter_node.node_tree = active_filter_group
+        active_filter_node.location = 200, i * NODE_OFFSET
 
-            if FILTER_NAME == "Camera: Agfar Isolette, with damage":
-                active_filter_node.inputs["IsDamaged"].default_value = (
-                    1.0 if i % FILTER_RANDOMIZER_FACTOR == 0 else 0.0
-                )
-                active_filter_node.inputs["DamageOffset"].default_value = (
-                    random.randint(-99, 99) * 1.0
-                )  # times 1.0 to normalize as float!
+        links.new(image_node.outputs[0], active_filter_node.inputs[0])
+
+        if DAMAGE_RANDOMIZER and DAMAGE_RANDOMIZER != 0 and i % DAMAGE_RANDOMIZER == 0:
+            damage_filter_node = tree.nodes.new("CompositorNodeGroup")
+            damage_filter_node.node_tree = damage_filter_group
+            damage_filter_node.location = 600, i * NODE_OFFSET
+            damage_filter_node.inputs["Amount"].default_value = 1.0
+            damage_filter_node.inputs["Offset"].default_value = random.uniform(
+                0.0, 25.0
+            )  # times 1.0 to normalize as float!
 
             # Link nodes
-            image_link = links.new(image_node.outputs[0], active_filter_node.inputs[0])
+            links.new(
+                damage_filter_node.outputs[0],
+                file_output_node.inputs[len(file_slots) - 1 - i],
+            )  # link to every slot in the output node
+            links.new(
+                active_filter_node.outputs[0],
+                damage_filter_node.inputs[0],
+            )  # link to every slot in the output node
+            scoped_image_nodes.append(damage_filter_node)
+        else:
+            # Link nodes
             links.new(
                 active_filter_node.outputs[0],
                 file_output_node.inputs[len(file_slots) - 1 - i],
             )  # link to every slot in the output node
 
-            scoped_images.append(img)
-            scoped_image_nodes.append(image_node)
-            scoped_image_nodes.append(active_filter_node)
-
-        except Exception as e:
-            print(f"ERROR: Failed to load {image_path}: {e}")
+        scoped_images.append(img)
+        scoped_image_nodes.append(image_node)
+        scoped_image_nodes.append(active_filter_node)
 
 
 def unlink_image(img):
@@ -148,7 +162,7 @@ print(f"INFO: executing script with the following params: ")
 print(f"IMAGE_INPUT_DIRECTORY: {IMAGE_INPUT_DIRECTORY}")
 print(f"IMAGE_OUTPUT_DIRECTORY: {IMAGE_OUTPUT_DIRECTORY}")
 print(f"FILTER_NAME: {FILTER_NAME}")
-print(f"FILTER_RANDOMIZER_FACTOR: {FILTER_RANDOMIZER_FACTOR}")
+print(f"DAMAGE_RANDOMIZER: {DAMAGE_RANDOMIZER}")
 
 # get all images from folder
 image_files = [

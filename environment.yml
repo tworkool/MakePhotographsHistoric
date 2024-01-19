@@ -1,4 +1,4 @@
-name: make-images-historical
+name: make-photos-historic
 channels:
   - conda-forge
   - defaults

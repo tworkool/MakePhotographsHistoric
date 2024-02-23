@@ -13,7 +13,7 @@ IMAGE_INPUT_DIRECTORY = (
 IMAGE_OUTPUT_DIRECTORY = (
     "D:\\dev\\python\\make-photographs-historical\\data\\4_output_images\\"
 )
-FILTER_NAME = "Camera: Agfar Isolette"
+FILTER_NAME = "Camera: Hasselblad 500 C/M"
 # apply dynamic filter effects (like damage) to every nth image!
 DAMAGE_RANDOMIZER = None  # None = off
 CLEANUP = True
@@ -71,10 +71,13 @@ def apply_filters():
     file_output_node.base_path = IMAGE_OUTPUT_DIRECTORY
     file_output_node.format.file_format = "PNG"
     file_output_node.location = 1000, 200 * (len(image_files) / 2)
+    # Clear all existing file slots (because in the beginning one already exists)
+    file_output_node.file_slots.clear()
     # Create unique file slots for each image
     file_slots = [
-        file_output_node.file_slots.new("Image") for _ in image_files
-    ]  # should be -1 because 1 slot already exists, but whatever
+        file_output_node.file_slots.new(f"{os.path.splitext(fl)[0]}_###")
+        for fl in image_files
+    ]
     scoped_image_nodes.append(file_output_node)
 
     active_filter_group = bpy.data.node_groups.get(FILTER_NAME)
@@ -112,7 +115,7 @@ def apply_filters():
             # Link nodes
             links.new(
                 damage_filter_node.outputs[0],
-                file_output_node.inputs[len(file_slots) - 1 - i],
+                file_output_node.inputs[i],
             )  # link to every slot in the output node
             links.new(
                 active_filter_node.outputs[0],
@@ -123,7 +126,7 @@ def apply_filters():
             # Link nodes
             links.new(
                 active_filter_node.outputs[0],
-                file_output_node.inputs[len(file_slots) - 1 - i],
+                file_output_node.inputs[i],
             )  # link to every slot in the output node
 
         scoped_images.append(img)
@@ -170,6 +173,7 @@ image_files = [
     for f in os.listdir(IMAGE_INPUT_DIRECTORY)
     if f.lower().endswith((".png", ".jpg", ".jpeg"))
 ]
+print(image_files)
 
 # apply composition node workflow filters
 apply_filters()

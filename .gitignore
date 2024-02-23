@@ -2,6 +2,7 @@
 *.blend1
 blender/assets/reference_images
 data/
+datasets/
 
 ######################## GITIGNORE FOR CONDA ########################
 

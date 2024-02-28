@@ -100,6 +100,15 @@ def apply_filters():
 
         links.new(image_node.outputs[0], active_filter_node.inputs[0])
 
+        # general randomization
+        randomness_seed = random.uniform(
+            0.0, 1.0
+        )
+        randomness_weight = 1.0
+        print(f"INFO: Randomness Seed for image {image_file} = {randomness_seed} with weight {randomness_weight}")
+        active_filter_node.inputs["Randomness Seed"].default_value = randomness_seed
+        active_filter_node.inputs["Randomness Weight"].default_value = randomness_weight
+
         if DAMAGE_RANDOMIZER and DAMAGE_RANDOMIZER != 0 and i % DAMAGE_RANDOMIZER == 0:
             damage_filter_node = tree.nodes.new("CompositorNodeGroup")
             damage_filter_node.node_tree = damage_filter_group

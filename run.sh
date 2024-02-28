@@ -1,0 +1,1 @@
+jupyter lab --allow-root --browser=google-chrome

@@ -18,6 +18,8 @@ FILTER_NAME = "Camera: Hasselblad 500 C/M"
 DAMAGE_RANDOMIZER = None  # None = off
 CLEANUP = True
 NODE_OFFSET = 200
+# value from 0 to 1
+RANDOMNESS_WEIGHT = 1.0
 
 ## BPY CONSTANTS
 tree = bpy.context.scene.node_tree
@@ -35,6 +37,7 @@ def evaluate_args():
     global IMAGE_INPUT_DIRECTORY
     global IMAGE_OUTPUT_DIRECTORY
     global DAMAGE_RANDOMIZER
+    global RANDOMNESS_WEIGHT
 
     # list of arguments passed after '--'
     # call like that 'python test.py -- <FILTER_NAME> <INPUT_PATH> <OUTPUT_PATH>
@@ -47,14 +50,17 @@ def evaluate_args():
 
     FILTER_NAME = argv[0]
 
-    if len(argv) >= 2:
+    if len(argv) > 1:
         IMAGE_INPUT_DIRECTORY = argv[1]
 
-    if len(argv) >= 3:
+    if len(argv) > 2:
         IMAGE_OUTPUT_DIRECTORY = argv[2]
 
-    if len(argv) >= 4:
+    if len(argv) > 3:
         DAMAGE_RANDOMIZER = int(argv[3])
+
+    if len(argv) > 4:
+        RANDOMNESS_WEIGHT = float(argv[4])
 
     return
 
@@ -104,13 +110,15 @@ def apply_filters():
         links.new(image_node.outputs[0], active_filter_node.inputs[0])
 
         # general randomization
-        randomness_seed = random.uniform(
-            0.0, 1.0
-        )
-        randomness_weight = 1.0
-        print(f"INFO: Randomness Seed for image {image_file} = {randomness_seed} with weight {randomness_weight}")
-        active_filter_node.inputs["Randomness Seed"].default_value = randomness_seed
-        active_filter_node.inputs["Randomness Weight"].default_value = randomness_weight
+        # active_filter_node.inputs["Randomness Seed"].default_value = random.uniform(0.0, 1.0)
+        # active_filter_node.inputs["Randomness Weight"].default_value = RANDOMNESS_WEIGHT
+        for n in active_filter_node.node_tree.nodes:
+            if "randomness map" in n.name.lower():
+                randomness_seed = random.uniform(0.0, 1.0)
+                n.inputs["Range Value"].default_value = randomness_seed
+                print(
+                    f"INFO: Randomness Seed for image {image_file} randomness node {n.label} with weight {RANDOMNESS_WEIGHT} and seed {randomness_seed}"
+                )
 
         if DAMAGE_RANDOMIZER and DAMAGE_RANDOMIZER != 0 and i % DAMAGE_RANDOMIZER == 0:
             damage_filter_node = tree.nodes.new("CompositorNodeGroup")
